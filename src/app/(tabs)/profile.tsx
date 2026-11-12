@@ -90,6 +90,16 @@ export default function ProfileScreen() {
           <Text style={styles.meta}>Tap the heart on a restaurant to save it here.</Text>
         )}
 
+        <View style={styles.legal}>
+          <Pressable onPress={() => router.push('/privacy')}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </Pressable>
+          <Text style={styles.meta}>·</Text>
+          <Pressable onPress={() => router.push('/terms')}>
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </Pressable>
+        </View>
+
         {user ? (
           <Pressable onPress={signOut} style={styles.signOut}>
             <Text style={styles.signOutText}>Sign out</Text>
@@ -137,8 +147,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   riderTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  legal: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 28 },
+  legalLink: { fontSize: 13, color: colors.muted, textDecorationLine: 'underline' },
   signOut: {
-    marginTop: 28,
+    marginTop: 16,
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: radius.md,

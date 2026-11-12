@@ -29,6 +29,8 @@ export default function RootLayout() {
           <Stack.Screen name="rider" options={{ title: 'Kaon Tangub Riders' }} />
           <Stack.Screen name="sign-in" options={{ title: 'Sign in' }} />
           <Stack.Screen name="admin" options={{ title: 'Rider approvals' }} />
+          <Stack.Screen name="privacy" options={{ title: 'Privacy Policy' }} />
+          <Stack.Screen name="terms" options={{ title: 'Terms of Service' }} />
         </Stack>
       </AppProvider>
       </AuthProvider>

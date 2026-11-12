@@ -53,6 +53,8 @@ export default function SignInPanel({ title, subtitle }: { title: string; subtit
         <Text style={styles.error}>Google sign-in has not been set up on the server yet.</Text>
       ) : null}
 
+      <Text style={styles.terms}>By continuing you agree to the Terms of Service and Privacy Policy (see Profile).</Text>
+
       {config?.testLogin ? (
         <View style={styles.test}>
           <Text style={styles.testLabel}>Test login (local testing only)</Text>
@@ -80,6 +82,7 @@ const styles = StyleSheet.create({
   logo: { width: 96, height: 96, borderRadius: 22, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: '800', color: colors.text, textAlign: 'center' },
   subtitle: { fontSize: 15, color: colors.muted, textAlign: 'center', marginBottom: 8 },
+  terms: { fontSize: 12, color: colors.muted, textAlign: 'center' },
   error: { color: colors.primaryDark, fontWeight: '600', textAlign: 'center' },
   test: { alignSelf: 'stretch', gap: 8, marginTop: 20, padding: 12, borderRadius: radius.md, backgroundColor: colors.accentSoft },
   testLabel: { fontSize: 12, fontWeight: '700', color: colors.accentText },
