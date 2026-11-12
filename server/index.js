@@ -1,11 +1,9 @@
 /**
- * Kaon Tangub server: orders, rider assignment and live rider GPS.
+ * Kaon Tangub server: sign-in, orders, rider registration/approval and live rider GPS.
  * Also serves the web build of the app (dist/) so one deploy gives a shareable link.
  *
- * No dependencies – run with:  node server/index.js
- * Env: PORT (default 3000), DATA_DIR (default ./data)
- *
- * Trial-grade: no logins, orders stored in a JSON file.
+ * Run with:  node server/index.js
+ * Env: PORT, DATABASE_URL, GOOGLE_CLIENT_ID, SESSION_SECRET, ADMIN_EMAILS  (see SETUP-LOGIN.md)
  */
 const http = require('node:http');
 const fs = require('node:fs');
@@ -13,35 +11,14 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const BOUNDS = require('../shared/tangub-bounds.json');
+const auth = require('./auth');
+const { createStore } = require('./store');
 
 const PORT = Number(process.env.PORT) || 3000;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'orders.json');
 const WEB_DIR = path.join(__dirname, '..', 'dist');
 
-// ---------- storage ----------
-/** @type {Map<string, any>} */
-const orders = new Map();
-try {
-  for (const o of JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'))) orders.set(o.id, o);
-  console.log(`Loaded ${orders.size} orders`);
-} catch {
-  /* first run */
-}
-
-let saveTimer = null;
-function save() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(DATA_FILE, JSON.stringify([...orders.values()]));
-    } catch (e) {
-      console.error('Could not save orders:', e.message);
-    }
-  }, 500);
-}
+/** @type {Awaited<ReturnType<typeof createStore>>} */
+let store;
 
 // ---------- helpers ----------
 const isCoords = (c) =>
@@ -60,26 +37,84 @@ class HttpError extends Error {
   }
 }
 
+const ACTIVE = ['accepted', 'picked_up'];
+const isApprovedRider = (user) => !!user.rider && user.rider.status === 'approved';
+const isAdmin = (user) => auth.isAdminEmail(user.email);
+
+/** What the app is allowed to know about the signed-in user. */
+const publicUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  picture: user.picture,
+  isAdmin: isAdmin(user),
+  rider: user.rider || null,
+});
+
+function signIn(profile) {
+  let user = store.users.get(profile.sub);
+  if (!user) {
+    user = { id: profile.sub, email: profile.email, name: profile.name, picture: profile.picture, rider: null, createdAt: Date.now() };
+    store.users.set(user.id, user);
+  } else {
+    Object.assign(user, { email: profile.email, name: profile.name, picture: profile.picture });
+  }
+  store.save('users', user);
+  return { token: auth.createSession(user.id), user: publicUser(user) };
+}
+
 function getOrder(id) {
-  const order = orders.get(id);
+  const order = store.orders.get(id);
   if (!order) throw new HttpError(404, 'Order not found');
   return order;
 }
 
-function requireRider(order, riderId) {
-  if (!riderId || order.riderId !== riderId) throw new HttpError(403, 'This order is assigned to another rider');
+function requireAssignedRider(order, user) {
+  if (order.riderId !== user.id) throw new HttpError(403, 'This order is assigned to another rider');
 }
 
-const ACTIVE = ['accepted', 'picked_up'];
+function setStatus(order, status) {
+  const now = Date.now();
+  order.status = status;
+  order.updatedAt = now;
+  order.history.push({ status, at: now });
+  store.save('orders', order);
+  return order;
+}
 
 // ---------- API ----------
+// [method, path pattern, who may call it, handler(match, body, user, query)]
+// who: 'public' | 'user' (signed in) | 'rider' (approved rider) | 'admin'
 const routes = [
-  ['GET', /^\/api\/health$/, () => ({ ok: true, orders: orders.size })],
+  ['GET', /^\/api\/health$/, 'public', () => ({ ok: true, persistent: store.persistent })],
 
-  // Customer places an order
-  ['POST', /^\/api\/orders$/, (_m, body) => {
-    const customerId = str(body.customerId, 80);
-    if (!customerId) throw new HttpError(400, 'Missing customer');
+  ['GET', /^\/api\/config$/, 'public', () => ({
+    googleClientId: auth.GOOGLE_CLIENT_ID,
+    testLogin: auth.ALLOW_TEST_LOGIN,
+  })],
+
+  ['POST', /^\/api\/auth\/google$/, 'public', async (_m, body) => {
+    let profile;
+    try {
+      profile = await auth.verifyGoogleToken(body.credential);
+    } catch (e) {
+      throw new HttpError(401, e.message);
+    }
+    return signIn(profile);
+  }],
+
+  // Password-less login for local testing only (ALLOW_TEST_LOGIN=1).
+  ['POST', /^\/api\/auth\/test$/, 'public', (_m, body) => {
+    if (!auth.ALLOW_TEST_LOGIN) throw new HttpError(404, 'Not found');
+    const email = str(body.email, 120).toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new HttpError(400, 'Enter an email');
+    return signIn({ sub: `test-${email}`, email, name: str(body.name, 60) || email.split('@')[0], picture: null });
+  }],
+
+  ['GET', /^\/api\/me$/, 'user', (_m, _b, user) => publicUser(user)],
+
+  // ----- customer -----
+  ['POST', /^\/api\/orders$/, 'user', (_m, body, user) => {
     if (!Array.isArray(body.lines) || !body.lines.length || body.lines.length > 100) {
       throw new HttpError(400, 'Your cart is empty');
     }
@@ -94,8 +129,8 @@ const routes = [
     const order = {
       id: crypto.randomBytes(4).toString('hex').toUpperCase(),
       status: 'placed',
-      customerId,
-      customerName: str(body.customerName, 60) || 'Guest',
+      customerId: user.id,
+      customerName: str(body.customerName, 60) || user.name,
       restaurantId: str(body.restaurantId, 80),
       restaurantName: str(body.restaurantName, 120),
       restaurantCoords: { latitude: body.restaurantCoords.latitude, longitude: body.restaurantCoords.longitude },
@@ -122,84 +157,128 @@ const routes = [
       updatedAt: now,
       riderId: null,
       riderName: null,
-      courier: null, // { latitude, longitude, updatedAt }
+      riderPhone: null,
+      courier: null, // { latitude, longitude, updatedAt } – live only, not saved to the database
       history: [{ status: 'placed', at: now }],
     };
-    orders.set(order.id, order);
-    save();
+    store.orders.set(order.id, order);
+    store.save('orders', order);
     return order;
   }],
 
-  // Customer's order history
-  ['GET', /^\/api\/orders$/, (_m, _b, query) => {
-    const customerId = query.get('customerId');
-    if (!customerId) throw new HttpError(400, 'Missing customer');
-    return [...orders.values()].filter((o) => o.customerId === customerId).sort((a, b) => b.createdAt - a.createdAt);
+  ['GET', /^\/api\/orders$/, 'user', (_m, _b, user) =>
+    [...store.orders.values()].filter((o) => o.customerId === user.id).sort((a, b) => b.createdAt - a.createdAt)],
+
+  ['GET', /^\/api\/orders\/([A-Z0-9]+)$/, 'user', (m, _b, user) => {
+    const order = getOrder(m[1]);
+    const allowed =
+      order.customerId === user.id ||
+      order.riderId === user.id ||
+      isAdmin(user) ||
+      (order.status === 'placed' && isApprovedRider(user));
+    if (!allowed) throw new HttpError(404, 'Order not found');
+    return order;
   }],
 
-  ['GET', /^\/api\/orders\/([A-Z0-9]+)$/, (m) => getOrder(m[1])],
-
-  // Customer cancels before a rider accepts
-  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/cancel$/, (m, body) => {
+  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/cancel$/, 'user', (m, _b, user) => {
     const order = getOrder(m[1]);
-    if (order.customerId !== body.customerId) throw new HttpError(403, 'Not your order');
+    if (order.customerId !== user.id) throw new HttpError(404, 'Order not found');
     if (order.status !== 'placed') throw new HttpError(409, 'A rider has already accepted this order');
     return setStatus(order, 'cancelled');
   }],
 
-  // Rider: orders waiting for a rider + this rider's own orders
-  ['GET', /^\/api\/rider\/orders$/, (_m, _b, query) => {
-    const riderId = query.get('riderId');
-    if (!riderId) throw new HttpError(400, 'Missing rider');
-    const all = [...orders.values()];
+  // ----- rider registration -----
+  ['POST', /^\/api\/rider\/apply$/, 'user', (_m, body, user) => {
+    if (user.rider && (user.rider.status === 'approved' || user.rider.status === 'suspended')) {
+      throw new HttpError(409, 'You already have a rider account');
+    }
+    const fullName = str(body.fullName, 80);
+    const phone = str(body.phone, 30);
+    const vehicle = str(body.vehicle, 60);
+    const plate = str(body.plate, 20);
+    if (!fullName) throw new HttpError(400, 'Enter your full name');
+    if (!/^[0-9+ ()-]{7,}$/.test(phone)) throw new HttpError(400, 'Enter a valid mobile number');
+    if (!vehicle) throw new HttpError(400, 'Enter your vehicle (e.g. Honda Click 125)');
+    user.rider = { status: 'pending', fullName, phone, vehicle, plate, appliedAt: Date.now(), decidedAt: null };
+    store.save('users', user);
+    return publicUser(user);
+  }],
+
+  // ----- rider (approved only) -----
+  ['GET', /^\/api\/rider\/orders$/, 'rider', (_m, _b, user) => {
+    const all = [...store.orders.values()];
     return {
       available: all.filter((o) => o.status === 'placed').sort((a, b) => a.createdAt - b.createdAt),
-      active: all.filter((o) => o.riderId === riderId && ACTIVE.includes(o.status)),
+      active: all.filter((o) => o.riderId === user.id && ACTIVE.includes(o.status)),
       completed: all
-        .filter((o) => o.riderId === riderId && o.status === 'delivered')
+        .filter((o) => o.riderId === user.id && o.status === 'delivered')
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 20),
     };
   }],
 
-  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/accept$/, (m, body) => {
+  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/accept$/, 'rider', (m, _b, user) => {
     const order = getOrder(m[1]);
-    const riderId = str(body.riderId, 80);
-    if (!riderId) throw new HttpError(400, 'Missing rider');
     if (order.status !== 'placed') throw new HttpError(409, 'This order is no longer available');
-    order.riderId = riderId;
-    order.riderName = str(body.riderName, 60) || 'Rider';
+    if ([...store.orders.values()].some((o) => o.riderId === user.id && ACTIVE.includes(o.status))) {
+      throw new HttpError(409, 'Finish your current delivery first');
+    }
+    order.riderId = user.id;
+    order.riderName = user.rider.fullName;
+    order.riderPhone = user.rider.phone;
     return setStatus(order, 'accepted');
   }],
 
-  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/status$/, (m, body) => {
+  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/status$/, 'rider', (m, body, user) => {
     const order = getOrder(m[1]);
-    requireRider(order, body.riderId);
+    requireAssignedRider(order, user);
     const next = { accepted: 'picked_up', picked_up: 'delivered' }[order.status];
     if (!next || body.status !== next) throw new HttpError(409, `Order is ${order.status}; cannot change to ${body.status}`);
     return setStatus(order, next);
   }],
 
   // Rider's phone reports its GPS position
-  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/location$/, (m, body) => {
+  ['POST', /^\/api\/orders\/([A-Z0-9]+)\/location$/, 'rider', (m, body, user) => {
     const order = getOrder(m[1]);
-    requireRider(order, body.riderId);
+    requireAssignedRider(order, user);
     if (!ACTIVE.includes(order.status)) throw new HttpError(409, 'Order is not in progress');
     if (!isCoords(body)) throw new HttpError(400, 'Missing coordinates');
     if (!inTangub(body)) throw new HttpError(422, 'Rider is outside Tangub City; location not shared.');
     order.courier = { latitude: body.latitude, longitude: body.longitude, updatedAt: Date.now() };
-    save();
     return { ok: true };
+  }],
+
+  // ----- admin: approve riders -----
+  ['GET', /^\/api\/admin\/riders$/, 'admin', () =>
+    [...store.users.values()]
+      .filter((u) => u.rider)
+      .sort((a, b) => b.rider.appliedAt - a.rider.appliedAt)
+      .map((u) => ({ id: u.id, email: u.email, name: u.name, rider: u.rider }))],
+
+  ['POST', /^\/api\/admin\/riders\/([^/]+)$/, 'admin', (m, body) => {
+    const user = store.users.get(decodeURIComponent(m[1]));
+    if (!user || !user.rider) throw new HttpError(404, 'Rider not found');
+    const status = { approve: 'approved', reject: 'rejected', suspend: 'suspended' }[body.action];
+    if (!status) throw new HttpError(400, 'Unknown action');
+    user.rider.status = status;
+    user.rider.decidedAt = Date.now();
+    store.save('users', user);
+    return { id: user.id, email: user.email, name: user.name, rider: user.rider };
   }],
 ];
 
-function setStatus(order, status) {
-  const now = Date.now();
-  order.status = status;
-  order.updatedAt = now;
-  order.history.push({ status, at: now });
-  save();
-  return order;
+function userFromRequest(req) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const uid = auth.readSession(token);
+  return uid ? store.users.get(uid) || null : null;
+}
+
+function authorize(who, user) {
+  if (who === 'public') return;
+  if (!user) throw new HttpError(401, 'Please sign in');
+  if (who === 'rider' && !isApprovedRider(user)) throw new HttpError(403, 'Your rider account is not approved');
+  if (who === 'admin' && !isAdmin(user)) throw new HttpError(403, 'Admins only');
 }
 
 // ---------- HTTP plumbing ----------
@@ -261,7 +340,7 @@ const server = http.createServer(async (req, res) => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
   if (!url.pathname.startsWith('/api/')) {
@@ -283,11 +362,13 @@ const server = http.createServer(async (req, res) => {
   };
 
   try {
-    for (const [method, pattern, handler] of routes) {
+    for (const [method, pattern, who, handler] of routes) {
       const match = req.method === method && url.pathname.match(pattern);
       if (match) {
+        const user = userFromRequest(req);
+        authorize(who, user);
         const body = method === 'POST' ? await readBody(req) : {};
-        return send(200, await handler(match, body, url.searchParams));
+        return send(200, await handler(match, body, user, url.searchParams));
       }
     }
     send(404, { error: 'Not found' });
@@ -298,4 +379,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`Kaon Tangub server on http://localhost:${PORT}`));
+createStore()
+  .then((s) => {
+    store = s;
+    console.log(
+      s.persistent
+        ? `Database connected: ${s.users.size} users, ${s.orders.size} orders`
+        : 'No DATABASE_URL: using a local file. Data will NOT survive restarts on free hosting.',
+    );
+    if (!auth.GOOGLE_CLIENT_ID) console.warn('GOOGLE_CLIENT_ID is not set: Google sign-in is disabled.');
+    if (auth.ALLOW_TEST_LOGIN) console.warn('ALLOW_TEST_LOGIN is on: anyone can sign in as anyone. Never use on the live site.');
+    server.listen(PORT, () => console.log(`Kaon Tangub server on http://localhost:${PORT}`));
+  })
+  .catch((e) => {
+    console.error('Could not start:', e.message);
+    process.exit(1);
+  });

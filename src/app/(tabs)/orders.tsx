@@ -4,13 +4,15 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { isFinished, Order, statusLabel } from '../../api';
-import { confirm, EmptyState } from '../../components/ui';
+import { confirm, EmptyState, PrimaryButton } from '../../components/ui';
 import { getRestaurant } from '../../data/restaurants';
 import { useApp } from '../../store/AppContext';
+import { useAuth } from '../../store/AuthContext';
 import { colors, money, radius, shadow } from '../../theme';
 
 export default function OrdersScreen() {
   const { orders, ordersError, refreshOrders, reorder, cartCount } = useApp();
+  const { user } = useAuth();
 
   // Refresh when the tab opens, and keep refreshing while it is on screen.
   useFocusEffect(
@@ -29,6 +31,16 @@ export default function OrdersScreen() {
     if (cartCount) confirm('Replace cart?', 'Your current cart will be replaced by this order.', 'Replace', go);
     else go();
   };
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <Text style={styles.h1}>Orders</Text>
+        <EmptyState emoji="🧾" title="Sign in to see your orders" subtitle="Your orders and live tracking appear here." />
+        <PrimaryButton label="Sign in with Google" onPress={() => router.push('/sign-in')} style={{ marginHorizontal: 32 }} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>

@@ -5,10 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { confirm, EmptyState, PrimaryButton, QuantityStepper } from '../components/ui';
 import { getRestaurant } from '../data/restaurants';
 import { SERVICE_FEE_RATE, useApp } from '../store/AppContext';
+import { useAuth } from '../store/AuthContext';
 import { colors, money, radius } from '../theme';
 
 export default function CartScreen() {
   const { cart, cartRestaurantId, subtotal, addItem, decrementItem, clearCart } = useApp();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const restaurant = cartRestaurantId ? getRestaurant(cartRestaurantId) : undefined;
 
@@ -79,10 +81,10 @@ export default function CartScreen() {
           </Text>
         ) : null}
         <PrimaryButton
-          label="Go to checkout"
+          label={user ? 'Go to checkout' : 'Sign in to checkout'}
           trailing={`· ${money(total)}`}
           disabled={short > 0}
-          onPress={() => router.push('/checkout')}
+          onPress={() => router.push(user ? '/checkout' : '/sign-in')}
         />
       </View>
     </View>

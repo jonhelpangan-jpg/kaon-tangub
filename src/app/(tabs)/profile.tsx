@@ -4,11 +4,15 @@ import { ScrollView, StyleSheet, Text, TextInput, View, Pressable } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { restaurants } from '../../data/restaurants';
+import { PrimaryButton } from '../../components/ui';
 import { useApp } from '../../store/AppContext';
+import { useAuth } from '../../store/AuthContext';
 import { colors, money, radius } from '../../theme';
 
 export default function ProfileScreen() {
-  const { name, setName, address, setAddress, favorites, orders } = useApp();
+  const { address, setAddress, favorites, orders } = useApp();
+  const { user, signOut } = useAuth();
+  const riderStatus = user?.rider?.status;
   const favs = restaurants.filter((r) => favorites.includes(r.id));
   const spent = orders.reduce((sum, o) => sum + o.total, 0);
 
@@ -19,24 +23,21 @@ export default function ProfileScreen() {
 
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{(name.trim()[0] ?? 'G').toUpperCase()}</Text>
+            <Text style={styles.avatarText}>{(user?.name[0] ?? '?').toUpperCase()}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{name.trim() || 'Guest'}</Text>
+            <Text style={styles.name}>{user ? user.name : 'Not signed in'}</Text>
             <Text style={styles.meta}>
-              {orders.length} {orders.length === 1 ? 'order' : 'orders'} · {money(spent)} spent
+              {user
+                ? `${user.email} · ${orders.length} ${orders.length === 1 ? 'order' : 'orders'} · ${money(spent)} spent`
+                : 'Sign in to order and track deliveries'}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Your name"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-        />
+        {user ? null : (
+          <PrimaryButton label="Sign in with Google" onPress={() => router.push('/sign-in')} style={{ marginTop: 12 }} />
+        )}
 
         <Text style={styles.label}>Delivery address</Text>
         <TextInput
@@ -47,14 +48,29 @@ export default function ProfileScreen() {
           style={styles.input}
         />
 
-        <Pressable style={styles.rider} onPress={() => router.push('/rider')}>
-          <Text style={{ fontSize: 26 }}>🛵</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.riderTitle}>Rider mode</Text>
-            <Text style={styles.meta}>Accept deliveries and share your live location</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-        </Pressable>
+        {/* Only riders see this. New riders register at the /rider link. */}
+        {riderStatus ? (
+          <Pressable style={styles.rider} onPress={() => router.push('/rider')}>
+            <Text style={{ fontSize: 26 }}>🛵</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.riderTitle}>{riderStatus === 'approved' ? 'Rider mode' : `Rider account: ${riderStatus}`}</Text>
+              <Text style={styles.meta}>
+                {riderStatus === 'approved' ? 'Accept deliveries and share your live location' : 'Tap to view your rider account'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        ) : null}
+        {user?.isAdmin ? (
+          <Pressable style={styles.rider} onPress={() => router.push('/admin')}>
+            <Text style={{ fontSize: 26 }}>🛡️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.riderTitle}>Rider approvals</Text>
+              <Text style={styles.meta}>Approve or suspend rider accounts</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        ) : null}
 
         <Text style={styles.h2}>Favorites</Text>
         {favs.length ? (
@@ -73,6 +89,12 @@ export default function ProfileScreen() {
         ) : (
           <Text style={styles.meta}>Tap the heart on a restaurant to save it here.</Text>
         )}
+
+        {user ? (
+          <Pressable onPress={signOut} style={styles.signOut}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -112,9 +134,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
     padding: 14,
-    marginTop: 24,
+    marginTop: 16,
   },
   riderTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  signOut: {
+    marginTop: 28,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  signOutText: { color: colors.primaryDark, fontWeight: '700' },
   fav: {
     flexDirection: 'row',
     alignItems: 'center',

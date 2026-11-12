@@ -4,37 +4,31 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { api, CartLine, Order } from '../api';
 import { getRestaurant, MenuItem } from '../data/restaurants';
 import { Coords, isInTangub, restaurantCoords, TANGUB_CENTER } from '../data/tangub';
+import { useAuth } from './AuthContext';
 
 export const SERVICE_FEE_RATE = 0.05;
 
 type State = {
-  /** Random id for this install; identifies the customer (and rider) to the server. No logins yet. */
-  deviceId: string;
   cartRestaurantId: string | null;
   cart: CartLine[];
   favorites: string[];
   address: string;
   deliveryCoords: Coords;
-  name: string;
 };
 
-const newDeviceId = () => `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-
 const initial: State = {
-  deviceId: '',
   cartRestaurantId: null,
   cart: [],
   favorites: [],
   address: 'Rizal Ave, Poblacion, Tangub City',
   deliveryCoords: TANGUB_CENTER,
-  name: 'Guest',
 };
 
 type Ctx = State & {
   ready: boolean;
   cartCount: number;
   subtotal: number;
-  /** This customer's orders, loaded from the server. */
+  /** The signed-in customer's orders, loaded from the server. Empty while signed out. */
   orders: Order[];
   ordersError: string | null;
   refreshOrders: () => Promise<void>;
@@ -51,13 +45,14 @@ type Ctx = State & {
   setAddress: (address: string) => void;
   /** Returns false (and changes nothing) if the point is outside Tangub City. */
   setDeliveryCoords: (coords: Coords) => boolean;
-  setName: (name: string) => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
-const STORAGE_KEY = 'kaon-tangub-state-v2';
+const STORAGE_KEY = 'kaon-tangub-state-v3';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [state, setState] = useState<State>(initial);
   const [ready, setReady] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,10 +61,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
-        const saved = raw ? JSON.parse(raw) : {};
-        setState({ ...initial, ...saved, deviceId: saved.deviceId || newDeviceId() });
+        if (raw) setState({ ...initial, ...JSON.parse(raw) });
       })
-      .catch(() => setState((s) => ({ ...s, deviceId: newDeviceId() })))
+      .catch(() => {})
       .finally(() => setReady(true));
   }, []);
 
@@ -78,18 +72,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state, ready]);
 
   const refreshOrders = useCallback(async () => {
-    if (!state.deviceId) return;
+    if (!userId) return;
     try {
-      setOrders(await api.listOrders(state.deviceId));
+      setOrders(await api.listOrders());
       setOrdersError(null);
     } catch (e) {
       setOrdersError((e as Error).message);
     }
-  }, [state.deviceId]);
+  }, [userId]);
 
+  // Load orders on sign-in; forget them on sign-out.
   useEffect(() => {
-    if (ready) refreshOrders();
-  }, [ready, refreshOrders]);
+    if (userId) refreshOrders();
+    else {
+      setOrders([]);
+      setOrdersError(null);
+    }
+  }, [userId, refreshOrders]);
 
   const subtotal = useMemo(
     () => state.cart.reduce((sum, l) => sum + l.item.price * l.qty, 0),
@@ -139,12 +138,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const placeOrder = useCallback(
     async ({ tip, payment, note }: { tip: number; payment: string; note: string }) => {
       const restaurant = state.cartRestaurantId ? getRestaurant(state.cartRestaurantId) : null;
+      if (!user) throw new Error('Please sign in to place an order.');
       if (!restaurant || !state.cart.length) throw new Error('Your cart is empty.');
       if (!isInTangub(state.deliveryCoords)) throw new Error('Your delivery pin is outside Tangub City.');
       const serviceFee = +(subtotal * SERVICE_FEE_RATE).toFixed(2);
       const order = await api.createOrder({
-        customerId: state.deviceId,
-        customerName: state.name.trim() || 'Guest',
+        customerName: user.name,
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
         restaurantCoords: restaurantCoords(restaurant.id),
@@ -163,7 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, cart: [], cartRestaurantId: null }));
       return order;
     },
-    [state, subtotal],
+    [state, subtotal, user],
   );
 
   const reorder = useCallback((order: Order) => {
@@ -185,7 +184,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, deliveryCoords: coords }));
     return true;
   }, []);
-  const setName = useCallback((name: string) => setState((s) => ({ ...s, name })), []);
 
   const value: Ctx = {
     ...state,
@@ -205,7 +203,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleFavorite,
     setAddress,
     setDeliveryCoords,
-    setName,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -6,7 +6,7 @@ import type { Coords } from './data/tangub';
 /**
  * Where the Kaon Tangub server lives.
  * - Web build served by the server itself: same origin, nothing to configure.
- * - Phone builds / `expo start`: set EXPO_PUBLIC_API_URL, e.g. https://your-app.onrender.com
+ * - Phone builds / `expo start`: set EXPO_PUBLIC_API_URL, e.g. https://kaon-tangub.onrender.com
  */
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 export const apiConfigured = Platform.OS === 'web' || API_URL.length > 0;
@@ -37,53 +37,112 @@ export type Order = {
   updatedAt: number;
   riderId: string | null;
   riderName: string | null;
+  riderPhone: string | null;
   /** Latest GPS position reported by the rider's phone. */
   courier: (Coords & { updatedAt: number }) | null;
 };
 
-export type NewOrder = Omit<
+export type NewOrder = Pick<
   Order,
-  'id' | 'status' | 'createdAt' | 'updatedAt' | 'riderId' | 'riderName' | 'courier'
+  | 'customerName'
+  | 'restaurantId'
+  | 'restaurantName'
+  | 'restaurantCoords'
+  | 'lines'
+  | 'subtotal'
+  | 'deliveryFee'
+  | 'serviceFee'
+  | 'tip'
+  | 'total'
+  | 'address'
+  | 'deliveryCoords'
+  | 'payment'
+  | 'note'
 >;
 
 export type RiderOrders = { available: Order[]; active: Order[]; completed: Order[] };
 
+export type RiderStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type RiderProfile = {
+  status: RiderStatus;
+  fullName: string;
+  phone: string;
+  vehicle: string;
+  plate: string;
+  appliedAt: number;
+};
+export type RiderApplication = Pick<RiderProfile, 'fullName' | 'phone' | 'vehicle' | 'plate'>;
+
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  picture: string | null;
+  isAdmin: boolean;
+  rider: RiderProfile | null;
+};
+
+export type AdminRider = { id: string; email: string; name: string; rider: RiderProfile };
+
+export type ServerConfig = { googleClientId: string; testLogin: boolean };
+
+/** Thrown for any failed request. `status` 401 means the user must sign in again. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+let sessionToken: string | null = null;
+export const setSessionToken = (token: string | null) => {
+  sessionToken = token;
+};
+
 async function request<T>(path: string, body?: unknown): Promise<T> {
   if (!apiConfigured) {
-    throw new Error('The app is not connected to a server yet (EXPO_PUBLIC_API_URL is not set).');
+    throw new ApiError(0, 'The app is not connected to a server yet (EXPO_PUBLIC_API_URL is not set).');
   }
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api${path}`, {
       method: body === undefined ? 'GET' : 'POST',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new Error('Could not reach the server. Check your internet connection.');
+    throw new ApiError(0, 'Could not reach the server. Check your internet connection.');
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error ?? `Server error (${res.status})`);
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? `Server error (${res.status})`);
   return data as T;
 }
 
 export const api = {
-  createOrder: (order: NewOrder) => request<Order>('/orders', order),
-  listOrders: (customerId: string) => request<Order[]>(`/orders?customerId=${encodeURIComponent(customerId)}`),
-  getOrder: (id: string) => request<Order>(`/orders/${encodeURIComponent(id)}`),
-  cancelOrder: (id: string, customerId: string) => request<Order>(`/orders/${id}/cancel`, { customerId }),
+  config: () => request<ServerConfig>('/config'),
+  signInWithGoogle: (credential: string) => request<{ token: string; user: User }>('/auth/google', { credential }),
+  signInForTesting: (email: string, name: string) => request<{ token: string; user: User }>('/auth/test', { email, name }),
+  me: () => request<User>('/me'),
 
-  riderOrders: (riderId: string) => request<RiderOrders>(`/rider/orders?riderId=${encodeURIComponent(riderId)}`),
-  acceptOrder: (id: string, riderId: string, riderName: string) =>
-    request<Order>(`/orders/${id}/accept`, { riderId, riderName }),
-  setStatus: (id: string, riderId: string, status: 'picked_up' | 'delivered') =>
-    request<Order>(`/orders/${id}/status`, { riderId, status }),
-  sendLocation: (id: string, riderId: string, coords: Coords) =>
-    request<{ ok: true }>(`/orders/${id}/location`, {
-      riderId,
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-    }),
+  createOrder: (order: NewOrder) => request<Order>('/orders', order),
+  listOrders: () => request<Order[]>('/orders'),
+  getOrder: (id: string) => request<Order>(`/orders/${encodeURIComponent(id)}`),
+  cancelOrder: (id: string) => request<Order>(`/orders/${id}/cancel`, {}),
+
+  applyAsRider: (application: RiderApplication) => request<User>('/rider/apply', application),
+  riderOrders: () => request<RiderOrders>('/rider/orders'),
+  acceptOrder: (id: string) => request<Order>(`/orders/${id}/accept`, {}),
+  setStatus: (id: string, status: 'picked_up' | 'delivered') => request<Order>(`/orders/${id}/status`, { status }),
+  sendLocation: (id: string, coords: Coords) =>
+    request<{ ok: true }>(`/orders/${id}/location`, { latitude: coords.latitude, longitude: coords.longitude }),
+
+  adminRiders: () => request<AdminRider[]>('/admin/riders'),
+  adminSetRider: (userId: string, action: 'approve' | 'reject' | 'suspend') =>
+    request<AdminRider>(`/admin/riders/${encodeURIComponent(userId)}`, { action }),
 };
 
 /** What the customer sees for each step. */

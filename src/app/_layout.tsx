@@ -3,11 +3,13 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppProvider } from '../store/AppContext';
+import { AuthProvider } from '../store/AuthContext';
 import { colors } from '../theme';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
+      <AuthProvider>
       <AppProvider>
         <StatusBar style="dark" />
         <Stack
@@ -24,9 +26,12 @@ export default function RootLayout() {
           <Stack.Screen name="cart" options={{ title: 'Your cart' }} />
           <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
           <Stack.Screen name="order/[id]" options={{ title: 'Track order' }} />
-          <Stack.Screen name="rider" options={{ title: 'Rider mode' }} />
+          <Stack.Screen name="rider" options={{ title: 'Kaon Tangub Riders' }} />
+          <Stack.Screen name="sign-in" options={{ title: 'Sign in' }} />
+          <Stack.Screen name="admin" options={{ title: 'Rider approvals' }} />
         </Stack>
       </AppProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

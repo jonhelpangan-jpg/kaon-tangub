@@ -16,7 +16,7 @@ const POLL_MS = 3000;
 
 export default function OrderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { orders, deviceId, refreshOrders } = useApp();
+  const { orders, refreshOrders } = useApp();
   const [order, setOrder] = useState<Order | undefined>(() => orders.find((o) => o.id === id));
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -63,7 +63,7 @@ export default function OrderScreen() {
   const onCancel = () =>
     confirm('Cancel order?', 'No rider has accepted it yet, so you can still cancel.', 'Cancel order', async () => {
       try {
-        setOrder(await api.cancelOrder(order.id, deviceId));
+        setOrder(await api.cancelOrder(order.id));
       } catch (e) {
         setError((e as Error).message);
         load();
@@ -156,7 +156,9 @@ export default function OrderScreen() {
         <Detail icon="storefront-outline" text={order.restaurantName} />
         <Detail icon="location-outline" text={order.address} />
         <Detail icon="card-outline" text={order.payment} />
-        {order.riderName ? <Detail icon="bicycle-outline" text={`Rider: ${order.riderName}`} /> : null}
+        {order.riderName ? (
+          <Detail icon="bicycle-outline" text={`Rider: ${order.riderName}${order.riderPhone ? ` · ${order.riderPhone}` : ''}`} />
+        ) : null}
         {order.note ? <Detail icon="chatbubble-outline" text={order.note} /> : null}
       </View>
 

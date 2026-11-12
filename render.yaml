@@ -1,5 +1,6 @@
-# One-click deploy on Render (render.com): New > Blueprint > pick this repository.
-# Free plan note: the service sleeps when idle and orders are wiped on each restart.
+# Deploy on Render (render.com): New > Blueprint > pick this repository.
+# After the first deploy, add the settings described in SETUP-LOGIN.md under
+# the service's Environment tab (DATABASE_URL, GOOGLE_CLIENT_ID, ADMIN_EMAILS, SESSION_SECRET).
 services:
   - type: web
     name: kaon-tangub

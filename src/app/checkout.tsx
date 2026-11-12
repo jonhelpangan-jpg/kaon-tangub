@@ -10,6 +10,7 @@ import { PrimaryButton } from '../components/ui';
 import { getRestaurant } from '../data/restaurants';
 import { Coords, isInTangub, OUTSIDE_TANGUB_MESSAGE, restaurantCoords } from '../data/tangub';
 import { SERVICE_FEE_RATE, useApp } from '../store/AppContext';
+import { useAuth } from '../store/AuthContext';
 import { colors, money, radius } from '../theme';
 import { Row } from './cart';
 
@@ -23,6 +24,7 @@ const payments: { id: string; label: string; icon: React.ComponentProps<typeof I
 export default function CheckoutScreen() {
   const { cart, cartRestaurantId, subtotal, address, setAddress, deliveryCoords, setDeliveryCoords, placeOrder } =
     useApp();
+  const { user, ready: authReady } = useAuth();
   const insets = useSafeAreaInsets();
   const [tip, setTip] = useState(20);
   const [payment, setPayment] = useState(payments[0].id);
@@ -32,6 +34,9 @@ export default function CheckoutScreen() {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [pinMessage, setPinMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  if (!authReady) return null;
+  if (!user) return <Redirect href="/sign-in" />;
 
   const restaurant = cartRestaurantId ? getRestaurant(cartRestaurantId) : undefined;
   if (!restaurant || !cart.length) {

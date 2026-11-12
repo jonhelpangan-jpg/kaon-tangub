@@ -5,42 +5,86 @@ import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { api, Order, RiderOrders } from '../api';
 import TangubMap from '../components/TangubMap';
+import RiderApplicationForm from '../components/RiderApplicationForm';
+import SignInPanel from '../components/SignInPanel';
 import { EmptyState, PrimaryButton } from '../components/ui';
 import { getRestaurant } from '../data/restaurants';
 import { Coords, isInTangub } from '../data/tangub';
-import { useApp } from '../store/AppContext';
+import { useAuth } from '../store/AuthContext';
 import { colors, money, radius, shadow } from '../theme';
 
 const POLL_MS = 4000;
 const SEND_MS = 3000;
 
 /**
- * Rider mode: accept orders, share live GPS while delivering, mark picked up / delivered.
- * GPS is shared only while this screen is open (no background tracking yet).
+ * Riders' entry point (share the /rider link with riders; customers never see it).
+ * Sign in with Google → register → wait for approval → deliver.
  */
 export default function RiderScreen() {
-  const { deviceId, name, ready } = useApp();
+  const { user, ready, refreshUser, signOut } = useAuth();
+  const status = user?.rider?.status;
+
+  // While waiting for approval, check every few seconds so the screen unlocks by itself.
+  useEffect(() => {
+    if (!user || status !== 'pending') return;
+    const t = setInterval(refreshUser, 8000);
+    return () => clearInterval(t);
+  }, [user, status, refreshUser]);
+
+  if (!ready) return null;
+  if (!user) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={{ paddingTop: 32 }}>
+        <SignInPanel title="Kaon Tangub Riders" subtitle="Sign in with Google to register as a rider or start delivering." />
+      </ScrollView>
+    );
+  }
+  if (status === 'approved') return <RiderDashboard riderName={user.rider!.fullName} />;
+
+  return (
+    <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
+      {status === 'pending' ? (
+        <EmptyState
+          emoji="⏳"
+          title="Application received"
+          subtitle={`Thanks, ${user.rider!.fullName}. Kaon Tangub will review your details. This screen unlocks automatically once you are approved.`}
+        />
+      ) : status === 'suspended' ? (
+        <EmptyState emoji="⛔" title="Rider account suspended" subtitle="Please contact Kaon Tangub." />
+      ) : (
+        <RiderApplicationForm rejected={status === 'rejected'} />
+      )}
+      <Pressable onPress={signOut} style={{ padding: 16, alignItems: 'center' }}>
+        <Text style={styles.sub}>Signed in as {user.email} · Sign out</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+/**
+ * Approved riders: accept orders, share live GPS while delivering, mark picked up / delivered.
+ * GPS is shared only while this screen is open (no background tracking yet).
+ */
+function RiderDashboard({ riderName }: { riderName: string }) {
   const [data, setData] = useState<RiderOrders | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [gps, setGps] = useState<{ coords: Coords | null; message: string }>({ coords: null, message: 'GPS off' });
 
   const load = useCallback(async () => {
-    if (!deviceId) return;
     try {
-      setData(await api.riderOrders(deviceId));
+      setData(await api.riderOrders());
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [deviceId]);
+  }, []);
 
   useEffect(() => {
-    if (!ready) return;
     load();
     const t = setInterval(load, POLL_MS);
     return () => clearInterval(t);
-  }, [ready, load]);
+  }, [load]);
 
   const active = data?.active[0];
   const activeId = active?.id;
@@ -48,7 +92,7 @@ export default function RiderScreen() {
 
   // While an order is in progress, watch this phone's GPS and send it to the server.
   useEffect(() => {
-    if (!activeId || !deviceId) {
+    if (!activeId) {
       setGps({ coords: null, message: 'GPS off' });
       return;
     }
@@ -75,7 +119,7 @@ export default function RiderScreen() {
             const first = !latest.current;
             latest.current = coords;
             setGps({ coords, message: 'Sharing your live location with the customer' });
-            if (first) api.sendLocation(activeId, deviceId, coords).catch(() => {});
+            if (first) api.sendLocation(activeId, coords).catch(() => {});
           },
           (reason) => setGps({ coords: null, message: `GPS error: ${reason}` }),
         );
@@ -89,7 +133,7 @@ export default function RiderScreen() {
     // Send the most recent position every few seconds, even when standing still,
     // so the customer always sees a fresh location.
     const beat = setInterval(() => {
-      if (latest.current) api.sendLocation(activeId, deviceId, latest.current).catch(() => {});
+      if (latest.current) api.sendLocation(activeId, latest.current).catch(() => {});
     }, SEND_MS);
 
     return () => {
@@ -98,7 +142,7 @@ export default function RiderScreen() {
       clearInterval(beat);
       latest.current = null;
     };
-  }, [activeId, deviceId]);
+  }, [activeId]);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -118,7 +162,7 @@ export default function RiderScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.sub}>Riding as {name.trim() || 'Guest'} · change your name in Profile</Text>
+      <Text style={styles.sub}>Riding as {riderName}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {active ? (
@@ -127,7 +171,7 @@ export default function RiderScreen() {
           gps={gps}
           busy={busy}
           onNext={() =>
-            run(() => api.setStatus(active.id, deviceId, active.status === 'accepted' ? 'picked_up' : 'delivered'))
+            run(() => api.setStatus(active.id, active.status === 'accepted' ? 'picked_up' : 'delivered'))
           }
         />
       ) : (
@@ -140,7 +184,7 @@ export default function RiderScreen() {
                 <PrimaryButton
                   label="Accept delivery"
                   disabled={busy}
-                  onPress={() => run(() => api.acceptOrder(o.id, deviceId, name.trim() || 'Rider'))}
+                  onPress={() => run(() => api.acceptOrder(o.id))}
                 />
               </View>
             ))
