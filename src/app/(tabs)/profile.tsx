@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View, Pressable } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { restaurants } from '../../data/restaurants';
+import SignOutButton from '../../components/SignOutButton';
 import { PrimaryButton } from '../../components/ui';
 import { useApp } from '../../store/AppContext';
 import { useAuth } from '../../store/AuthContext';
@@ -11,7 +12,7 @@ import { colors, money, radius } from '../../theme';
 
 export default function ProfileScreen() {
   const { address, setAddress, favorites, orders } = useApp();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const riderStatus = user?.rider?.status;
   const favs = restaurants.filter((r) => favorites.includes(r.id));
   const spent = orders.reduce((sum, o) => sum + o.total, 0);
@@ -100,11 +101,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        {user ? (
-          <Pressable onPress={signOut} style={styles.signOut}>
-            <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
-        ) : null}
+        <SignOutButton />
       </ScrollView>
     </SafeAreaView>
   );
@@ -149,16 +146,6 @@ const styles = StyleSheet.create({
   riderTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
   legal: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 28 },
   legalLink: { fontSize: 13, color: colors.muted, textDecorationLine: 'underline' },
-  signOut: {
-    marginTop: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  signOutText: { color: colors.primaryDark, fontWeight: '700' },
   fav: {
     flexDirection: 'row',
     alignItems: 'center',

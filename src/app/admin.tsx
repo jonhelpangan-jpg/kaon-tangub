@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AdminRider, api, RiderStatus } from '../api';
 import SignInPanel from '../components/SignInPanel';
+import SignOutButton from '../components/SignOutButton';
 import { EmptyState } from '../components/ui';
 import { useAuth } from '../store/AuthContext';
 import { colors, radius, shadow } from '../theme';
@@ -43,7 +44,12 @@ export default function AdminScreen() {
     );
   }
   if (!user.isAdmin) {
-    return <EmptyState emoji="🔒" title="Admins only" subtitle={`${user.email} is not an admin account.`} />;
+    return (
+      <ScrollView style={styles.screen}>
+        <EmptyState emoji="🔒" title="Admins only" subtitle={`${user.email} is not an admin account. Sign out to switch accounts.`} />
+        <SignOutButton />
+      </ScrollView>
+    );
   }
 
   const act = async (id: string, action: 'approve' | 'reject' | 'suspend') => {
@@ -102,6 +108,7 @@ export default function AdminScreen() {
       <Pressable onPress={load} style={[styles.btn, { marginTop: 20 }]}>
         <Text style={styles.btnText}>Refresh</Text>
       </Pressable>
+      <SignOutButton />
     </ScrollView>
   );
 }

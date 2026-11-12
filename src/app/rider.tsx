@@ -7,6 +7,7 @@ import { api, Order, RiderOrders } from '../api';
 import TangubMap from '../components/TangubMap';
 import RiderApplicationForm from '../components/RiderApplicationForm';
 import SignInPanel from '../components/SignInPanel';
+import SignOutButton from '../components/SignOutButton';
 import { EmptyState, PrimaryButton } from '../components/ui';
 import { getRestaurant } from '../data/restaurants';
 import { Coords, isInTangub } from '../data/tangub';
@@ -21,7 +22,7 @@ const SEND_MS = 3000;
  * Sign in with Google → register → wait for approval → deliver.
  */
 export default function RiderScreen() {
-  const { user, ready, refreshUser, signOut } = useAuth();
+  const { user, ready, refreshUser } = useAuth();
   const status = user?.rider?.status;
 
   // While waiting for approval, check every few seconds so the screen unlocks by itself.
@@ -54,9 +55,7 @@ export default function RiderScreen() {
       ) : (
         <RiderApplicationForm rejected={status === 'rejected'} />
       )}
-      <Pressable onPress={signOut} style={{ padding: 16, alignItems: 'center' }}>
-        <Text style={styles.sub}>Signed in as {user.email} · Sign out</Text>
-      </Pressable>
+      <SignOutButton />
     </ScrollView>
   );
 }
@@ -209,6 +208,10 @@ function RiderDashboard({ riderName }: { riderName: string }) {
           ))}
         </>
       ) : null}
+
+      <SignOutButton
+        warning={active ? 'You have a delivery in progress. Signing out stops sharing your location with the customer.' : undefined}
+      />
     </ScrollView>
   );
 }
