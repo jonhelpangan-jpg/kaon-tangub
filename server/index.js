@@ -267,6 +267,37 @@ const routes = [
   }],
 ];
 
+/**
+ * Redirect-style Google sign-in, for browsers where Google's pop-up gets stuck.
+ * Google sends the browser here with a form POST; we check it and send the browser
+ * back to the app with the session in the URL fragment (never sent to any server).
+ */
+async function googleRedirectCallback(req, res) {
+  const fail = (message) => {
+    res.writeHead(303, { Location: `/sign-in#signin_error=${encodeURIComponent(message)}`, 'Cache-Control': 'no-store' });
+    res.end();
+  };
+  try {
+    const raw = await readRaw(req);
+    const form = new URLSearchParams(raw);
+    const cookies = Object.fromEntries(
+      (req.headers.cookie || '').split(';').map((c) => {
+        const i = c.indexOf('=');
+        return [c.slice(0, i).trim(), c.slice(i + 1).trim()];
+      }),
+    );
+    // Google's double-submit check: the same random value must arrive in a cookie and in the form.
+    const csrf = form.get('g_csrf_token');
+    if (!csrf || csrf !== cookies.g_csrf_token) return fail('Sign-in could not be verified. Please try again.');
+    const profile = await auth.verifyGoogleToken(form.get('credential'));
+    const { token } = signIn(profile);
+    res.writeHead(303, { Location: `/#session=${encodeURIComponent(token)}`, 'Cache-Control': 'no-store' });
+    res.end();
+  } catch (e) {
+    fail(e instanceof HttpError || e.message ? e.message : 'Sign-in failed');
+  }
+}
+
 function userFromRequest(req) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -282,7 +313,7 @@ function authorize(who, user) {
 }
 
 // ---------- HTTP plumbing ----------
-function readBody(req) {
+function readRaw(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
     req.on('data', (chunk) => {
@@ -292,17 +323,20 @@ function readBody(req) {
         req.destroy();
       }
     });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try {
-        const parsed = JSON.parse(raw);
-        resolve(parsed && typeof parsed === 'object' ? parsed : {});
-      } catch {
-        reject(new HttpError(400, 'Invalid JSON'));
-      }
-    });
+    req.on('end', () => resolve(raw));
     req.on('error', reject);
   });
+}
+
+async function readBody(req) {
+  const raw = await readRaw(req);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    throw new HttpError(400, 'Invalid JSON');
+  }
 }
 
 const MIME = {
@@ -355,6 +389,8 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, cors);
     return res.end();
   }
+
+  if (req.method === 'POST' && url.pathname === '/api/auth/google/callback') return googleRedirectCallback(req, res);
 
   const send = (status, data) => {
     res.writeHead(status, { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });

@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { api, ApiError, setSessionToken, User } from '../api';
 
@@ -11,6 +13,8 @@ type Ctx = {
   signInWithGoogle: (credential: string) => Promise<void>;
   signInForTesting: (email: string, name: string) => Promise<void>;
   signOut: () => void;
+  /** Message from a failed redirect sign-in, if any. */
+  signInError: string | null;
   /** Re-reads the account from the server (e.g. to see if a rider was approved). */
   refreshUser: () => Promise<void>;
   setUser: (user: User) => void;
@@ -18,10 +22,23 @@ type Ctx = {
 
 const AuthContext = createContext<Ctx | null>(null);
 const TOKEN_KEY = 'kaon-tangub-session';
+/** Where to go back to after a redirect-style Google sign-in (web only). */
+export const RETURN_TO_KEY = 'kaon-tangub-return-to';
+
+/** After a redirect sign-in the server sends us back with #session=… or #signin_error=… in the address. */
+function readSignInFragment(): { token?: string; error?: string } {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.location.hash) return {};
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const token = params.get('session') ?? undefined;
+  const error = params.get('signin_error') ?? undefined;
+  if (token || error) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  return { token, error };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   const signOut = useCallback(() => {
     setSessionToken(null);
@@ -41,10 +58,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        const fragment = readSignInFragment();
+        if (fragment.error) setSignInError(fragment.error);
+        if (fragment.token) await AsyncStorage.setItem(TOKEN_KEY, fragment.token);
+        const token = fragment.token ?? (await AsyncStorage.getItem(TOKEN_KEY));
         if (token) {
           setSessionToken(token);
           await refreshUser();
+        }
+        if (fragment.token) {
+          const returnTo = await AsyncStorage.getItem(RETURN_TO_KEY);
+          await AsyncStorage.removeItem(RETURN_TO_KEY);
+          if (returnTo && returnTo.startsWith('/') && returnTo !== '/') setTimeout(() => router.push(returnTo as never), 0);
         }
       } finally {
         setReady(true);
@@ -68,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, ready, signInWithGoogle, signInForTesting, signOut, refreshUser, setUser }}>
+    <AuthContext.Provider value={{ user, ready, signInError, signInWithGoogle, signInForTesting, signOut, refreshUser, setUser }}>
       {children}
     </AuthContext.Provider>
   );

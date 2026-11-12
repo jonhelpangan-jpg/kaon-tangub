@@ -9,9 +9,9 @@ import { PrimaryButton } from './ui';
 
 /** Logo, a line of explanation and the Google button. Used wherever sign-in is needed. */
 export default function SignInPanel({ title, subtitle }: { title: string; subtitle: string }) {
-  const { signInWithGoogle, signInForTesting } = useAuth();
+  const { signInWithGoogle, signInForTesting, signInError } = useAuth();
   const [config, setConfig] = useState<ServerConfig | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(signInError);
   const [busy, setBusy] = useState(false);
   const [testEmail, setTestEmail] = useState('');
 
