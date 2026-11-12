@@ -1,0 +1,713 @@
+{
+  "categories": [
+    {
+      "id": "all",
+      "label": "All",
+      "emoji": "🍽️"
+    },
+    {
+      "id": "burgers",
+      "label": "Burgers",
+      "emoji": "🍔"
+    },
+    {
+      "id": "pizza",
+      "label": "Pizza",
+      "emoji": "🍕"
+    },
+    {
+      "id": "sushi",
+      "label": "Sushi",
+      "emoji": "🍣"
+    },
+    {
+      "id": "mexican",
+      "label": "Mexican",
+      "emoji": "🌮"
+    },
+    {
+      "id": "healthy",
+      "label": "Healthy",
+      "emoji": "🥗"
+    },
+    {
+      "id": "asian",
+      "label": "Asian",
+      "emoji": "🍜"
+    },
+    {
+      "id": "dessert",
+      "label": "Dessert",
+      "emoji": "🍰"
+    }
+  ],
+  "stores": [
+    {
+      "id": "smash-yard",
+      "name": "Smash Yard",
+      "featured": false,
+      "cuisine": "Burgers · American",
+      "categories": [
+        "burgers"
+      ],
+      "emoji": "🍔",
+      "tint": "#FFE8C7",
+      "promo": "Free fries over ₱400",
+      "rating": 4.7,
+      "reviews": 1280,
+      "etaMin": 20,
+      "etaMax": 30,
+      "deliveryFee": 39,
+      "minOrder": 200,
+      "location": {
+        "latitude": 8.0631,
+        "longitude": 123.7518
+      },
+      "menu": [
+        {
+          "title": "Burgers",
+          "items": [
+            {
+              "id": "sy1",
+              "name": "Classic Smash",
+              "description": "Double beef patty, American cheese, pickles, house sauce",
+              "price": 190,
+              "emoji": "🍔",
+              "popular": true
+            },
+            {
+              "id": "sy2",
+              "name": "Bacon Jam Burger",
+              "description": "Smoked bacon jam, cheddar, crispy onions",
+              "price": 230,
+              "emoji": "🥓",
+              "popular": true
+            },
+            {
+              "id": "sy3",
+              "name": "Crispy Chicken",
+              "description": "Buttermilk fried chicken, slaw, spicy mayo",
+              "price": 210,
+              "emoji": "🍗"
+            },
+            {
+              "id": "sy4",
+              "name": "Mushroom Swiss (V)",
+              "description": "Grilled portobello, swiss, garlic aioli",
+              "price": 200,
+              "emoji": "🍄"
+            }
+          ]
+        },
+        {
+          "title": "Sides",
+          "items": [
+            {
+              "id": "sy5",
+              "name": "Skin-on Fries",
+              "description": "Sea salt, served with ketchup",
+              "price": 70,
+              "emoji": "🍟",
+              "popular": true
+            },
+            {
+              "id": "sy6",
+              "name": "Onion Rings",
+              "description": "Beer-battered, ranch dip",
+              "price": 90,
+              "emoji": "🧅"
+            },
+            {
+              "id": "sy7",
+              "name": "Mac & Cheese Bites",
+              "description": "Six pieces, marinara",
+              "price": 110,
+              "emoji": "🧀"
+            }
+          ]
+        },
+        {
+          "title": "Drinks",
+          "items": [
+            {
+              "id": "sy8",
+              "name": "Vanilla Shake",
+              "description": "Hand-spun, whipped cream",
+              "price": 100,
+              "emoji": "🥤"
+            },
+            {
+              "id": "sy9",
+              "name": "Lemonade",
+              "description": "Fresh squeezed",
+              "price": 60,
+              "emoji": "🍋"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forno-rosso",
+      "name": "Forno Rosso",
+      "featured": false,
+      "cuisine": "Pizza · Italian",
+      "categories": [
+        "pizza"
+      ],
+      "emoji": "🍕",
+      "tint": "#FFD9D2",
+      "rating": 4.8,
+      "reviews": 2145,
+      "etaMin": 25,
+      "etaMax": 40,
+      "deliveryFee": 49,
+      "minOrder": 300,
+      "location": {
+        "latitude": 8.0672,
+        "longitude": 123.7561
+      },
+      "menu": [
+        {
+          "title": "Wood-fired Pizza",
+          "items": [
+            {
+              "id": "fr1",
+              "name": "Margherita",
+              "description": "San Marzano tomato, fior di latte, basil",
+              "price": 260,
+              "emoji": "🍕",
+              "popular": true
+            },
+            {
+              "id": "fr2",
+              "name": "Diavola",
+              "description": "Spicy salami, chili oil, mozzarella",
+              "price": 310,
+              "emoji": "🌶️",
+              "popular": true
+            },
+            {
+              "id": "fr3",
+              "name": "Quattro Formaggi",
+              "description": "Mozzarella, gorgonzola, parmesan, fontina",
+              "price": 320,
+              "emoji": "🧀"
+            },
+            {
+              "id": "fr4",
+              "name": "Funghi e Tartufo",
+              "description": "Wild mushrooms, truffle cream",
+              "price": 350,
+              "emoji": "🍄"
+            }
+          ]
+        },
+        {
+          "title": "Pasta",
+          "items": [
+            {
+              "id": "fr5",
+              "name": "Cacio e Pepe",
+              "description": "Tonnarelli, pecorino, black pepper",
+              "price": 280,
+              "emoji": "🍝"
+            },
+            {
+              "id": "fr6",
+              "name": "Lasagna al Forno",
+              "description": "Slow-cooked beef ragù, béchamel",
+              "price": 300,
+              "emoji": "🍝",
+              "popular": true
+            }
+          ]
+        },
+        {
+          "title": "Dolci",
+          "items": [
+            {
+              "id": "fr7",
+              "name": "Tiramisù",
+              "description": "Espresso-soaked ladyfingers, mascarpone",
+              "price": 140,
+              "emoji": "🍰"
+            },
+            {
+              "id": "fr8",
+              "name": "Cannoli (2)",
+              "description": "Ricotta, pistachio, chocolate",
+              "price": 130,
+              "emoji": "🥐"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "umi-sushi",
+      "name": "Umi Sushi Bar",
+      "featured": false,
+      "cuisine": "Sushi · Japanese",
+      "categories": [
+        "sushi",
+        "asian"
+      ],
+      "emoji": "🍣",
+      "tint": "#D9EEF2",
+      "promo": "10% off first order",
+      "rating": 4.9,
+      "reviews": 860,
+      "etaMin": 30,
+      "etaMax": 45,
+      "deliveryFee": 69,
+      "minOrder": 400,
+      "location": {
+        "latitude": 8.0612,
+        "longitude": 123.7489
+      },
+      "menu": [
+        {
+          "title": "Rolls",
+          "items": [
+            {
+              "id": "us1",
+              "name": "Spicy Tuna Roll",
+              "description": "Tuna, sriracha mayo, cucumber (8 pc)",
+              "price": 190,
+              "emoji": "🍣",
+              "popular": true
+            },
+            {
+              "id": "us2",
+              "name": "Dragon Roll",
+              "description": "Shrimp tempura, avocado, eel sauce (8 pc)",
+              "price": 280,
+              "emoji": "🐉",
+              "popular": true
+            },
+            {
+              "id": "us3",
+              "name": "Avocado Maki (V)",
+              "description": "Avocado, sesame (6 pc)",
+              "price": 120,
+              "emoji": "🥑"
+            }
+          ]
+        },
+        {
+          "title": "Nigiri & Sashimi",
+          "items": [
+            {
+              "id": "us4",
+              "name": "Salmon Nigiri",
+              "description": "Two pieces",
+              "price": 130,
+              "emoji": "🐟"
+            },
+            {
+              "id": "us5",
+              "name": "Chef’s Sashimi",
+              "description": "Twelve-piece daily selection",
+              "price": 440,
+              "emoji": "🍱",
+              "popular": true
+            }
+          ]
+        },
+        {
+          "title": "Hot Dishes",
+          "items": [
+            {
+              "id": "us6",
+              "name": "Miso Soup",
+              "description": "Tofu, wakame, scallion",
+              "price": 70,
+              "emoji": "🍲"
+            },
+            {
+              "id": "us7",
+              "name": "Chicken Katsu Don",
+              "description": "Crispy cutlet, egg, rice",
+              "price": 270,
+              "emoji": "🍚"
+            },
+            {
+              "id": "us8",
+              "name": "Edamame",
+              "description": "Sea salt",
+              "price": 90,
+              "emoji": "🫛"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "casa-taco",
+      "name": "Casa Taco",
+      "featured": true,
+      "cuisine": "Mexican · Tacos",
+      "categories": [
+        "mexican"
+      ],
+      "emoji": "🌮",
+      "tint": "#FFF0B8",
+      "promo": "Free delivery",
+      "rating": 4.6,
+      "reviews": 1530,
+      "etaMin": 15,
+      "etaMax": 25,
+      "deliveryFee": 0,
+      "minOrder": 240,
+      "location": {
+        "latitude": 8.0689,
+        "longitude": 123.7502
+      },
+      "menu": [
+        {
+          "title": "Tacos (3 per order)",
+          "items": [
+            {
+              "id": "ct1",
+              "name": "Al Pastor",
+              "description": "Marinated pork, pineapple, cilantro",
+              "price": 210,
+              "emoji": "🌮",
+              "popular": true
+            },
+            {
+              "id": "ct2",
+              "name": "Carne Asada",
+              "description": "Grilled steak, onion, salsa verde",
+              "price": 230,
+              "emoji": "🥩",
+              "popular": true
+            },
+            {
+              "id": "ct3",
+              "name": "Baja Fish",
+              "description": "Crispy cod, cabbage, chipotle crema",
+              "price": 220,
+              "emoji": "🐟"
+            },
+            {
+              "id": "ct4",
+              "name": "Sweet Potato (V)",
+              "description": "Roasted sweet potato, black beans, queso fresco",
+              "price": 190,
+              "emoji": "🍠"
+            }
+          ]
+        },
+        {
+          "title": "Burritos & Bowls",
+          "items": [
+            {
+              "id": "ct5",
+              "name": "Chicken Burrito",
+              "description": "Rice, beans, pico, cheese, crema",
+              "price": 220,
+              "emoji": "🌯",
+              "popular": true
+            },
+            {
+              "id": "ct6",
+              "name": "Veggie Bowl (V)",
+              "description": "Cilantro rice, fajita veg, guacamole",
+              "price": 210,
+              "emoji": "🥙"
+            }
+          ]
+        },
+        {
+          "title": "Extras",
+          "items": [
+            {
+              "id": "ct7",
+              "name": "Chips & Guac",
+              "description": "House-made, lime, sea salt",
+              "price": 120,
+              "emoji": "🥑"
+            },
+            {
+              "id": "ct8",
+              "name": "Churros",
+              "description": "Cinnamon sugar, chocolate dip",
+              "price": 110,
+              "emoji": "🍩"
+            },
+            {
+              "id": "ct9",
+              "name": "Horchata",
+              "description": "Rice milk, cinnamon",
+              "price": 70,
+              "emoji": "🥛"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "green-bowl",
+      "name": "Green Bowl Co.",
+      "featured": false,
+      "cuisine": "Healthy · Salads",
+      "categories": [
+        "healthy"
+      ],
+      "emoji": "🥗",
+      "tint": "#DDF3D8",
+      "rating": 4.5,
+      "reviews": 640,
+      "etaMin": 15,
+      "etaMax": 25,
+      "deliveryFee": 29,
+      "minOrder": 200,
+      "location": {
+        "latitude": 8.0644,
+        "longitude": 123.7587
+      },
+      "menu": [
+        {
+          "title": "Bowls",
+          "items": [
+            {
+              "id": "gb1",
+              "name": "Harvest Bowl",
+              "description": "Wild rice, roasted squash, kale, goat cheese",
+              "price": 250,
+              "emoji": "🥗",
+              "popular": true
+            },
+            {
+              "id": "gb2",
+              "name": "Chicken Caesar",
+              "description": "Romaine, parmesan crisps, grilled chicken",
+              "price": 240,
+              "emoji": "🥬",
+              "popular": true
+            },
+            {
+              "id": "gb3",
+              "name": "Salmon Poke",
+              "description": "Sushi rice, edamame, avocado, ponzu",
+              "price": 290,
+              "emoji": "🐟"
+            },
+            {
+              "id": "gb4",
+              "name": "Falafel Mezze (V)",
+              "description": "Hummus, tabbouleh, pickled onion",
+              "price": 230,
+              "emoji": "🧆"
+            }
+          ]
+        },
+        {
+          "title": "Juices & Smoothies",
+          "items": [
+            {
+              "id": "gb5",
+              "name": "Green Machine",
+              "description": "Spinach, apple, ginger, lemon",
+              "price": 130,
+              "emoji": "🥬"
+            },
+            {
+              "id": "gb6",
+              "name": "Berry Blast",
+              "description": "Mixed berries, banana, oat milk",
+              "price": 130,
+              "emoji": "🫐",
+              "popular": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noodle-house",
+      "name": "Lucky Noodle House",
+      "featured": false,
+      "cuisine": "Asian · Noodles",
+      "categories": [
+        "asian"
+      ],
+      "emoji": "🍜",
+      "tint": "#F7E0C8",
+      "rating": 4.6,
+      "reviews": 990,
+      "etaMin": 25,
+      "etaMax": 35,
+      "deliveryFee": 59,
+      "minOrder": 240,
+      "location": {
+        "latitude": 8.0598,
+        "longitude": 123.7542
+      },
+      "menu": [
+        {
+          "title": "Noodles",
+          "items": [
+            {
+              "id": "nh1",
+              "name": "Tonkotsu Ramen",
+              "description": "Pork broth, chashu, soft egg, nori",
+              "price": 290,
+              "emoji": "🍜",
+              "popular": true
+            },
+            {
+              "id": "nh2",
+              "name": "Pad Thai",
+              "description": "Rice noodles, shrimp, peanuts, lime",
+              "price": 270,
+              "emoji": "🥜",
+              "popular": true
+            },
+            {
+              "id": "nh3",
+              "name": "Dan Dan Noodles",
+              "description": "Sichuan pepper, minced pork, chili oil",
+              "price": 250,
+              "emoji": "🌶️"
+            },
+            {
+              "id": "nh4",
+              "name": "Veggie Lo Mein (V)",
+              "description": "Egg noodles, seasonal vegetables",
+              "price": 230,
+              "emoji": "🥦"
+            }
+          ]
+        },
+        {
+          "title": "Small Plates",
+          "items": [
+            {
+              "id": "nh5",
+              "name": "Pork Dumplings (6)",
+              "description": "Pan-fried, black vinegar dip",
+              "price": 150,
+              "emoji": "🥟",
+              "popular": true
+            },
+            {
+              "id": "nh6",
+              "name": "Bao Buns (2)",
+              "description": "Braised pork belly, pickles",
+              "price": 160,
+              "emoji": "🥯"
+            },
+            {
+              "id": "nh7",
+              "name": "Spring Rolls (4)",
+              "description": "Vegetable, sweet chili",
+              "price": 110,
+              "emoji": "🌯"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sugar-rush",
+      "name": "Sugar Rush Bakery",
+      "featured": false,
+      "cuisine": "Dessert · Bakery",
+      "categories": [
+        "dessert"
+      ],
+      "emoji": "🧁",
+      "tint": "#FBDDEB",
+      "promo": "Buy 3 cookies, get 1 free",
+      "rating": 4.8,
+      "reviews": 720,
+      "etaMin": 20,
+      "etaMax": 30,
+      "deliveryFee": 39,
+      "minOrder": 160,
+      "location": {
+        "latitude": 8.0703,
+        "longitude": 123.7549
+      },
+      "menu": [
+        {
+          "title": "Cakes & Slices",
+          "items": [
+            {
+              "id": "sr1",
+              "name": "Chocolate Fudge Cake",
+              "description": "Three layers, dark ganache",
+              "price": 130,
+              "emoji": "🍰",
+              "popular": true
+            },
+            {
+              "id": "sr2",
+              "name": "Basque Cheesecake",
+              "description": "Burnt top, creamy center",
+              "price": 140,
+              "emoji": "🧀",
+              "popular": true
+            },
+            {
+              "id": "sr3",
+              "name": "Lemon Tart",
+              "description": "Buttery shell, torched meringue",
+              "price": 120,
+              "emoji": "🍋"
+            }
+          ]
+        },
+        {
+          "title": "Cookies & Pastries",
+          "items": [
+            {
+              "id": "sr4",
+              "name": "Brown Butter Cookie",
+              "description": "Sea salt, dark chocolate chunks",
+              "price": 70,
+              "emoji": "🍪",
+              "popular": true
+            },
+            {
+              "id": "sr5",
+              "name": "Cinnamon Roll",
+              "description": "Cream cheese frosting",
+              "price": 90,
+              "emoji": "🥐"
+            },
+            {
+              "id": "sr6",
+              "name": "Glazed Donut",
+              "description": "Classic vanilla glaze",
+              "price": 60,
+              "emoji": "🍩"
+            }
+          ]
+        },
+        {
+          "title": "Drinks",
+          "items": [
+            {
+              "id": "sr7",
+              "name": "Iced Latte",
+              "description": "Double shot, choice of milk",
+              "price": 90,
+              "emoji": "🧋"
+            },
+            {
+              "id": "sr8",
+              "name": "Hot Chocolate",
+              "description": "Belgian chocolate, marshmallow",
+              "price": 90,
+              "emoji": "☕"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

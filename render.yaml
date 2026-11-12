@@ -1,0 +1,13 @@
+# One-click deploy on Render (render.com): New > Blueprint > pick this repository.
+# Free plan note: the service sleeps when idle and orders are wiped on each restart.
+services:
+  - type: web
+    name: kaon-tangub
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build:web
+    startCommand: npm run server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
